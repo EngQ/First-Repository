@@ -1,0 +1,1786 @@
+Code 1: SolEADirrev.m
+% *************************************************************************
+% *************************************************************************
+% Universidade Federal de Pernambuco
+% Departamento de Engenharia Química
+% Programa de Pós-Graduação em Engenharia Química
+% Aluno: Genilson Antônio da Silva
+% Email: genilson_antonio@hotmail.com
+% *************************************************************************
+% *************************************************************************
+% Escopo do programa
+% =========================================================================
+% Este software se baseia no conceito de irreversibilidade e se destina a 
+% construção de mapas de curvas de residuais reativas para análise do 
+% comportamento de misturas ternárias, quaternárias e/ou qualquer sistema 
+% multicomponente homogêneo ou heterogêneo.
+%
+% Permissão para uso do programa
+% =========================================================================
+% Desde que seja feita uma referência adequada a este trabalho, este 
+% software pode ser usado livremente para fins não comerciais.
+% Todas as outras formas de utilização estão sujeitas a acordo prévio com o % autor.
+%
+% Isenção de responsabilidade
+% =========================================================================
+% O usuário do software deve observar que, do ponto de vista legal,
+% não há garantia expressa ou implícita de que o software esteja livre de
+% de erro ou será adequado para uma aplicação específica.
+% Ao usar o software, o usuário assume total responsabilidade pelos
+% resultados produzidos, e o autor se isenta de qualquer responsabilidade 
+% ou de qualquer consequências decorrentes do uso do software.
+%**************************************************************************
+% Mapas de Curvas Residuais para Sistemas Ternários 
+% *************************************************************************
+clear all; 
+clc;
+global q A
+%**************************************************************************
+% Carregamento das Propriedades Físicas do Sistema
+[N,cPv,cV,cI,R,L,MM,v,Tc,Pc,Vc,Zc,w] = Dados;
+%**************************************************************************
+GAS = 1;     % identifica que gráficos ainda não têm curvas de EQ
+chave = 1;   % variável que define se o cálculo será refeito sob novas condições
+perg = 1000; % variável para não repetir a pergunta de parâmetros
+RepPer = 1000; % variável para não repetir a pergunta de parâmetros
+%**************************************************************************
+% Seleção Fase Gasosa Ideal x Não-Ideal 
+escTipoGas = menu('Selecione o tipo de Fase Gasosa:','Ideal','Não-ideal');
+matTipoGas = [1,2];
+TipoGas=matTipoGas(escTipoGas);
+%**************************************************************************
+% Seleção do Modelo 
+esctipo = menu('Selecione o tipo de sistema com relação a transferência de massa:','Sistema reversível','Sistema irreversível');
+mattipo = [1,2];
+tipo=mattipo(esctipo);
+%**************************************************************************
+% Pressão total na interface 
+escP = menu('Selecione um valor de Pressão na Interface (Pi, MPa):','0.8','1.0','Entrar com outro valor.');  % Pa
+matP = [0.8E6,1E6,300000];
+Pi = matP(escP);
+if Pi == 300000
+   Pi = input('Entre com um valor de Pressão na Interface (Pi, MPa): ');
+   Pi = Pi*1E6;
+end  
+PressPi = Pi;
+%**************************************************************************
+% Número de Damkohler 
+escDa = menu('Selecione um valor para o Número de Damkohler (Da):','0','1E-3','3E-3','1','Entrar com outro valor.');  % admensional
+matDa = [0,1E-3,3E-3,1,800000];
+Da=matDa(escDa);
+if Da == 800000
+   Da = input('Entre com um valor para o Número de Damkohler (Da): ');
+end  
+NumDa=Da;
+%**************************************************************************
+% Área interfacial entre as fases líquido e vapor 
+if tipo ==2
+escA = menu('Selecione um valor para área (A, m^2):','10','30','50','100','Entrar com outro valor.');  % m^2
+matA = [10,30,50,100,200000];
+A = matA(escA);
+if A == 200000
+   A = input('Entre com um valor para área (A, m^2): ');
+end  
+end
+%**************************************************************************
+% Vazão de vapor 
+if tipo ==2
+escq = menu('Selecione um valor para vazão molar (q, mol/s):','0.01','0.10','0.25','0.75','0.95','Entrar com outro valor.');  % mol/s
+matq = [0.01,0.10,0.25,0.75,0.95,100000];
+q=matq(escq);
+if q == 100000
+   q = input('Entre com um valor para vazão molar (q, mol/s): ');
+end  
+end
+%**************************************************************************
+while chave == 1
+%**************************************************************************
+% Limpeza das variáveis para prevenir erros na simulação 
+clear  X        tempo    Temp    Pbulk   Pinterf  CTMeff  ConstCinet ...
+       ConstEQ  CA      PresSat  FIrrev  ConstEF  Y       r    P;
+%**************************************************************************
+% Verificar manter valores de parâmetros Da, A, q
+if perg ==1
+    %
+    escRepPer = menu('Manter valores dos parâmetros (Da, A, q)?','Sim','Não');
+    matRepPer = [1,2];
+    RepPer=matRepPer(escRepPer);
+    %
+end
+%************************************************************************** 
+if RepPer == 2 
+%
+% Seleção Fase Gasosa Ideal x Não-Ideal 
+escTipoGas = menu('Selecione o tipo de Fase Gasosa:','Ideal','Não-ideal');
+matTipoGas = [1,2];
+TipoGas=matTipoGas(escTipoGas);
+%
+% Seleção do Modelo 
+esctipo = menu('Selecione o tipo de sistema com relação a transferência de massa:','Sistema reversível','Sistema irreversível');
+mattipo = [1,2];
+tipo=mattipo(esctipo);
+%
+% Pressão total na interface 
+escP = menu('Selecione um valor de Pressão na Interface (Pi, MPa):','0.8','1.0','Entrar com outro valor.');  % Pa
+matP = [0.8E6,1E6,300000];
+Pi = matP(escP);
+if Pi == 300000
+   Pi = input('Entre com um valor de Pressão na Interface (Pi, MPa): ');
+   Pi = Pi*1E6;
+end  
+PressPi = Pi;
+%
+% Número de Damkohler 
+escDa = menu('Selecione um valor para o Número de Damkohler (Da):','0','1E-3','3E-3','1','Entrar com outro valor.');  % admensional
+matDa = [0,1E-3,3E-3,1,800000];
+Da=matDa(escDa);
+if Da == 800000
+   Da = input('Entre com um valor para o Número de Damkohler (Da): ');
+end  
+NumDa=Da;
+%
+% Área interfacial entre as fases líquido e vapor 
+if tipo ==2
+escA = menu('Selecione um valor para área (A, m^2):','10','30','50','100','Entrar com outro valor.');  % m^2
+matA = [10,30,50,100,200000];
+A = matA(escA);
+if A == 200000
+   A = input('Entre com um valor para área (A, m^2): ');
+end  
+end
+%
+% Vazão de vapor 
+if tipo ==2
+escq = menu('Selecione um valor para vazão molar (q, mol/s):','0.01','0.10','0.25','0.75','0.95','Entrar com outro valor.');  % mol/s
+matq = [0.01,0.10,0.25,0.75,0.95,100000];
+q=matq(escq);
+if q == 100000
+   q = input('Entre com um valor para vazão molar (q, mol/s): ');
+end  
+end
+end
+%**************************************************************************
+% Selecionar se é feito o cálculo da Sepatriz
+escspt = menu('Cálculo da Separatriz?','Sim','Não');  
+matspt = [1,2];
+spt=matspt(escspt);
+%**************************************************************************
+% Entrada da composição Inicial do Líquido 
+disp(' ');
+disp(' ');
+x0(1) = round(input('Entre com a composição do isobuteno (x_1):  '),5); % Isobutene
+x0(2) = round(input('Entre com a composição do metanol   (x_2):  '),5); % MeOH
+x0(3) = round(1-x0(1)-x0(2),5);   % MTBE
+SX    = abs(x0(1))+abs(x0(2))+abs(x0(3));
+if SX>1        % garante que o somatório das frações molares seja igual a 1
+   while SX>1
+       disp(' ');
+disp('O somatório das frações molares deve totalizar 1!');
+disp(' ');
+x0(1) = round(input('Entre com a composição do isobuteno (x_1):  '),5); % Isobutene
+x0(2) = round(input('Entre com a composição do metanol   (x_2):  '),5); % MeOH
+       x0(3) = round(1-x0(1)-x0(2),5);   % MTBE
+       SX=abs(x0(1))+abs(x0(2))+abs(x0(3));
+   end
+end
+%
+xi = x0;                  % Estimativa inicial da integração
+X(1,:) = x0;              % Atribui x0 a solução do sistema de EAD em t = 0
+%**************************************************************************
+% Cálculo da Temperatura do Sistema e Composição da Fase Vapor Inicial
+T0 = BolhaT(x0,Pi,R,cPv,cV,cI,N,TipoGas,Pc,Tc,Vc,Zc,w);
+%**************************************************************************
+% Variáveis auxiliares de integração
+cont = 1;                           % Contador auxiliar 
+tf = 0;                             % Tempo inicial para a integração do sistema de EAD
+tempo(1,1) = tf;                    % Tempo inicial para o vetor tempo da solução
+err1 = 10; err2 = 10; err3 = 10;    % valores iniciais dos erros
+prec = 1E-10;% Precisão nas frações molares dos componentes da fase liquida
+Pchute = Pi;                        % Valor inicial para a estimativa da pressão do bulk
+%**************************************************************************
+% Imprime a solução do sistema na tabela no display
+disp(' ');
+disp(' ');
+disp('========================================================================');
+disp('                                 Tabela       ');
+disp('========================================================================');
+disp(' i         t          X1         X2        X3        P(MPa)       T(K)');
+disp('====    =======    =======    =======    =======    ========    =======');
+fprintf('%3d%11.3f%11.3f%11.3f%11.3f%11.2f%12.1f\n',cont,tf,x0(1),x0(2),x0(3),Pi/1000000,T0)
+%**************************************************************************
+while ((err1 > prec) || (err2 > prec) || (err3 > prec))
+%**************************************************************************
+% Cálculo da Temperatura do Sistema e Composição da Fase Vapor
+[T,yi] = BolhaT(xi,Pi,R,cPv,cV,cI,N,TipoGas,Pc,Tc,Vc,Zc,w);
+Temp(cont,1) = T; % Atribui a temperatura inicial T ao vetor Temp em t = 0
+Y(cont,:) = yi;   % Atribui a composição inicial da fase gasosa yi ao vetor Y em t = 0 
+%**************************************************************************
+% Cálculo do Coeficiente de Atividade
+gama = CoefAtiv(xi,T,R,cV,cI,N);
+CA(cont,:) = gama;
+%**************************************************************************
+% Cálculo da Pressão de Vapor   
+Pv = Psat(cPv,T);
+PresSat(cont,:) = Pv;
+%**************************************************************************
+% Cálculo dos Parâmetros Cinéticos e de Equilíbrio Químico
+[kref,k,Keq] = CineticaEQ(T);
+ConstCinet(cont,:) = k;
+ConstEQ(cont,:) = Keq;
+%**************************************************************************
+% Cálculo do Fator de Irreversibilidade, Constante de Equilíbrio de Fases e
+% Pressão no bulk da Fase Gasosa
+if tipo == 1
+    alfa = [1 1 1];
+    FIrrev(cont,:) = alfa;
+    K = [1 1 1];
+    ConstEF(cont,:) = K;
+    Pbulk(cont,1) = Pi;
+    Pinterf(cont,1) = Pi;
+    CFUG = ones(1,N); 
+    CoefFug(cont,:) = CFUG;
+else
+    [alfa,K,P,kVeff,CFUG] = Irrev(N,A,Pi,R,T,q,Pv,gama,L,MM,v,yi,Pchute,TipoGas,Tc,Vc,Zc,w);
+    CTMeff(cont,:) = kVeff;
+    Pbulk(cont,1) = P;
+    Pinterf(cont,1) = Pi;
+    FIrrev(cont,:) = alfa;
+    ConstEF(cont,:) = K;
+    CoefFug(cont,:) = CFUG;
+end
+    Pchute = Pbulk(cont,1)    % Valor inicial para a estimativa da pressão do bulk
+%**************************************************************************
+%Cálculo da Taxa de Reação
+r(cont,1) = k * ((gama(1)*xi(1))/(gama(2)*xi(2))-(1/Keq)*((gama(3)*xi(3))/(gama(2)*xi(2))^2));
+%**************************************************************************
+% Solução do Sistema de EADs
+if spt ==1  % seleciona se o cálculo será feito para uma 
+    % Intervalo de Integração do Sistema de EADs
+    t0  = 0.0;         % Tempo inicial de integração
+    dtf = 0.0001;      % Incremento de tempo de integração
+    tf  = tf + dtf;    % Tempo final de integração
+    tspan = [t0 tf];   % Intervalo de tempo de integração
+    M = [1 0 0; 0 1 0; 0 0 0];
+    options = odeset('Mass',M,'RelTol',1e-10,'AbsTol',[1e-10 1e-10 1e-10]);
+    [t,x] = ode15s(@SistEADIrrevSep,tspan,xi,options,k,Pbulk,Pv,kref,Keq,gama,alfa,K,CFUG,Da,Pi);
+else
+    % Intervalo de Integração do Sistema de EADs
+    t0  = 0.0;         % Tempo inicial de integração
+    dtf = 0.0001;      % Incremento de tempo de integração
+    tf  = tf + dtf;    % Tempo final de integração
+    tspan = [t0 tf];   % Intervalo de tempo de integração
+    M = [1 0 0; 0 1 0; 0 0 0];
+    options = odeset('Mass',M,'RelTol',1e-10,'AbsTol',[1e-10 1e-10 1e-10]);
+    [t,x] = ode15s(@SistEADIrrev,tspan,xi,options,k,Pbulk,Pv,kref,Keq,gama,alfa,K,CFUG,Da,Pi);
+end   
+%**************************************************************************
+% Atribui solução do sistema de EAD ao vetor xi
+xi = x(end,:); % recebe a última linha da matriz de solução do sistema de EAD
+%**************************************************************************
+% Associa a solução do sistema de EAD aos vetores finais de solução e evita 
+%que em caso de pressões negativas seja associada uma solução ao vetor X, o
+%que permite a exclusão da linha com a pressão negativa
+if Pbulk(cont,1) > 0     
+    X(cont+1,:) = xi;
+    tempo(cont+1,1) = tf;
+end
+%**************************************************************************
+% Para o loop caso encontre um valor negativo de composição de cada um dos 
+%componentes ou pressão no bulk
+if Pbulk(cont,1) < 0
+    break;
+elseif xi(1)<0
+    break;
+elseif xi(2)<0
+    break;
+elseif xi(3)<0
+    break;
+end
+%**************************************************************************
+% Imprime a solução do sistema na tabela no display
+        format bank
+        fprintf('%3d%11.3f%11.3f%11.3f%11.3f%11.2f%12.1f\n',cont,tf,X(cont,1),X(cont,2),X(cont,3),Pbulk(cont,1)/1000000,T);
+%**************************************************************************
+% Cálculo dos erros entre passos das soluções da composição da fase líquida
+%obtida pela solução do sistema de EAD 
+format long
+err1 = abs(X(cont+1,1)-X(cont,1));  % Diferença em X1 entre os passos
+err2 = abs(X(cont+1,2)-X(cont,2));  % Diferença em X2 entre os passos
+err3 = abs(X(cont+1,3)-X(cont,3));  % Diferença em X3 entre os passos
+cont = cont+1;                      % Incremento no contador auxiliar
+%**************************************************************************
+end
+%**************************************************************************
+% Exclui última linha com valor negativo de composição ou pressão, caso
+% ocorra ou completa as propriedades 
+if (X(end,1)<0)||(X(end,2)<0)||(X(end,3)<0)
+    tempo(end,:)=[];
+    X(end,:)=[];
+elseif (Pbulk(end,1)<0)||(isnan(Pbulk(end,1)))
+    tempo(end,:)=[];
+    X(end,:)=[];
+    Pbulk(end,:)=[]; 
+    Pinterf(end,:)=[];
+    Temp(end,:)=[];
+    CA(end,:)=[];
+    PresSat(end,:)=[];
+    ConstCinet(end,:)=[];
+    ConstEQ(end,:)=[];
+    CTMeff(end,:)=[];
+    FIrrev(end,:)=[];
+    ConstEF(end,:)=[];
+else
+    % Cálculo da Temperatura do Sistema e Composição da Fase Vapor Final
+    [T,yi] = BolhaT(xi,Pi,R,cPv,cV,cI,N,TipoGas,Pc,Tc,Vc,Zc,w);
+    Temp(cont,1) = T; % Atribui a temperatura inicial T ao vetor Temp em t = 0
+    Y(cont,:) = yi;     % Atribui a composição inicial da fase gasosa yi ao vetor Y em t = 0   
+    %
+    % Cálculo do Coeficiente de Atividade Final
+    gama = CoefAtiv(xi,T,R,cV,cI,N);
+    CA(cont,:) = gama;
+    %
+    % Cálculo da Pressão de Vapor Final   
+    Pv = Psat(cPv,T);
+    PresSat(cont,:) = Pv;
+    %
+    % Cálculo dos Parâmetros Cinéticos e de Equilíbrio Químico Finais
+    [kref,k,Keq] = CineticaEQ(T);
+    ConstCinet(cont,:) = k;
+    ConstEQ(cont,:) = Keq;
+    %
+    % Cálculo do Fator de Irreversibilidade, Constante de Equilíbrio de Fases e
+    % Pressão no bulk da Fase Gasosa Finais
+    if tipo == 1
+        alfa = [1 1 1];
+        K = [1 1 1];
+        ConstEF(cont,:) = K;
+        Pbulk(cont,1) = Pi;
+        Pinterf(cont,1) = Pi;
+    else
+        [alfa,K,P,kVeff,CFUG] = Irrev(N,A,Pi,R,T,q,Pv,gama,L,MM,v,yi,Pchute,TipoGas,Tc,Vc,Zc,w);
+        CTMeff(cont,:) = kVeff;
+        Pbulk(cont,1) = P;
+        Pinterf(cont,1) = Pi;
+        FIrrev(cont,:) = alfa;
+        ConstEF(cont,:) = K;
+    end
+    %
+    %Cálculo da Taxa de Reação
+    r(cont,1) = k * ((gama(1)*xi(1))/(gama(2)*xi(2))-(1/Keq)*((gama(3)*xi(3))/(gama(2)*xi(2))^2));
+    %
+    format bank
+    fprintf('%3d%11.3f%11.3f%11.3f%11.3f%11.2f%12.1f\n',cont,tf,X(cont,1),X(cont,2),X(cont,3),Pbulk(cont,1)/1000000,T);
+end
+disp('========================================================================');
+disp(' ');
+disp(' ');
+%**************************************************************************
+% Menu de Gráficos
+TipoGraf = 20;
+%
+while TipoGraf ~= 15
+%**************************************************************************
+escTipoGraf = menu('Selecione o gráfico desejado:','RCM','Cinética na Fase Líquida','Perfil de Temperatura',...
+    'Perfil de Pressão','RCM em 3D','Taxa de Reação','Coeficiente de Atividade',...
+    'Coeficiente de Transferência de Massa Efetivo','Coeficiente de Irreversibilidade',...
+    'Constante de Equilíbrio de Fases','Tabela de Dados no Equilíbrio',...
+    'Constante de Equilíbrio Químico','Cinética em Fase Vapor na Interface',...
+    'Cinética em Fase Vapor no Bulk','Fechar');
+matTipoGraf = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15];
+TipoGraf=matTipoGraf(escTipoGraf);
+%**************************************************************************   
+    if TipoGraf == 1
+%**************************************************************************
+% Impressão do RCM
+figure (1)
+fig = get(groot,'CurrentFigure');
+set(gca,'FontSize',18); 
+hold on
+fig.Color = [1 1 1];
+%
+line([0 1],[1 0],'Color','black');
+axis([0 1 0 1]);
+xlabel ('\bfx_1')
+ylabel('\bfx_2')
+%
+hold on
+if spt == 2     %Plota a curva residual
+    if tipo == 1      
+       p1 = plot(X(:,1),X(:,2),'k-','LineWidth', 2);
+%      plot(X(:,1),X(:,2),'k-.','LineWidth', 2.5)   %usei para plotar região de multiplicidade de estados estacionários
+%
+    escPF = menu('Marcar ponto final (Nó estável)?','Sim','Não');
+    matPF = [1,2];
+    PF = matPF(escPF);
+    if PF == 1
+        p2 = plot(X(end,1),X(end,2),'o','MarkerSize',6,'MarkerEdgeColor','k','MarkerFaceColor',[0 0 0]); %destacar o ponto final
+        legend ([p1 p2], { 'Residual curve' , 'Final point' });
+    else
+        break
+    end
+%         plot(X(end,1),X(end,2),'o','MarkerSize',6,'MarkerEdgeColor','k','MarkerFaceColor',[0 0 0]); %destacar o ponto final
+    else      
+%         plot(X(:,1),X(:,2),'k-.','LineWidth', 1.5)
+          p3 = plot(X(:,1),X(:,2),'k-','LineWidth', 2);    %COBEQ2018
+%         plot(X(:,1),X(:,2),'k-.','LineWidth', 2.5)       %usei para plotar região de multiplicidade de estados estacionários
+    escPF = menu('Marcar ponto final (Nó estável)?','Sim','Não');
+    matPF = [1,2];
+    PF = matPF(escPF);
+    if PF == 1
+        p4 = plot(X(end,1),X(end,2),'o','MarkerSize',6,'MarkerEdgeColor','k','MarkerFaceColor',[0 0 0]); %destacar o ponto final
+        legend ([p3 p4], { 'Residual curve' , 'Final point' });
+    else
+        break
+    end
+%
+     end        
+else            %Plota a curva separatriz
+    if tipo == 1
+%         plot(X(:,1),X(:,2),'k-','LineWidth', 2);       %plota a 
+%         plot(X(:,1),X(:,2),'k-','LineWidth', 2);      %COBEQ2018 
+        plot(X(:,1),X(:,2),'k-. ','LineWidth', 2.5);      %ARTICLE
+        legend('Residual curve')
+    else
+%         plot(X(:,1),X(:,2),'k-.','LineWidth', 2);       %plota a 
+        plot(X(:,1),X(:,2),'k-.','LineWidth', 2.5);      %ARTICLE 
+        legend('Residual curve')
+    end        
+%
+end
+%
+if (Da ~= 0)&&(spt == 2)
+% Impressão do RCM no Equilíbrio
+if tipo==1
+    x0(1)= 0.99;              % Isobuteno
+    x0(2)= 0.001;               % Metanol
+    x0(3) = 1.0-x0(1)-x0(2);   % MTBE
+    Xe = CurvaEQ(Pi,A,q,TipoGas,tipo,x0);       % calcula o perfil de EQ
+    plot(Xe(:,1),Xe(:,2),'k:','LineWidth', 1.5)
+    legend('Chemical equilibrium curve')
+else
+    x0(1)= 0.985;              % Isobuteno
+    x0(2)= 0.001;              % Metanol
+    x0(3) = 1.0-x0(1)-x0(2);   % MTBE
+%    
+    Xe1 = CurvaEQ(Pi,A,q,TipoGas,tipo,x0);      % calcula o perfil de EQ
+    plot(Xe1(:,1),Xe1(:,2),'k:','LineWidth', 1.5)
+    x0(1)= 0.987;              % Isobuteno
+    x0(2)= 0.001;              % Metanol
+    x0(3) = 1.0-x0(1)-x0(2);   % MTBE
+%    
+    Xe2 = CurvaEQ(Pi,A,q,TipoGas,tipo,x0);       % calcula o perfil de EQ
+    plot(Xe2(:,1),Xe2(:,2),'k:','LineWidth', 1.5)
+    legend('Chemical equilibrium curve')
+end
+%
+end
+%
+if spt == 1
+escPtoFixo = menu('Classificar pontos fixos?','Sim','Não');
+matPtoFixo = [1,2];
+PtoFixo=mattipo(escPtoFixo);
+if PtoFixo == 1
+    %
+    escPI = menu('O ponto fixo inicial se classifica como?','Nó estável','Nó instável','Ponto de Sela','NA');
+    matPI = [1,2,3,4];
+    PI = matPI(escPI);
+    if PI == 1
+       plot(X(1,1),X(1,2),'o','MarkerSize',6,'MarkerEdgeColor','k','LineWidth', 2,'MarkerFaceColor',[0 0 0]); %destacar o ponto inicial
+        lengend('Stable node');
+    elseif PI == 2
+        plot(X(1,1),X(1,2),'o','MarkerSize',6,'MarkerEdgeColor','k','LineWidth', 2); %destacar o ponto inicial
+        lengend('Unstable node');
+    elseif PI == 3
+        plot(X(1,1),X(1,2),'s','MarkerSize',8,'MarkerEdgeColor','k','LineWidth', 2); %destacar o ponto inicial
+        lengend('Saddle Point');
+    else
+        break
+    end
+    %
+    escPF = menu('O ponto fixo final se classifica como?','Nó estável','Nó instável','Ponto de Sela','NA');
+    matPF = [1,2,3,4];
+    PF = matPF(escPF);
+    if PF == 1
+        plot(X(end,1),X(end,2),'o','MarkerSize',6,'MarkerEdgeColor','k','LineWidth', 2,'MarkerFaceColor',[0 0 0]); %destacar o ponto inicial
+        lengend('Stable node');
+    elseif PF == 2
+        plot(X(end,1),X(end,2),'o','MarkerSize',6,'MarkerEdgeColor','k','LineWidth', 2); %destacar o ponto inicial
+        lengend('Unstable node');
+    elseif PF == 3
+        plot(X(end,1),X(end,2),'s','MarkerSize',8,'MarkerEdgeColor','k','LineWidth', 2); %destacar o ponto inicial
+        lengend('Saddle Point');
+    else
+        break
+    end        
+end  
+end
+%
+hold off
+%**************************************************************************
+    elseif TipoGraf == 2
+%**************************************************************************
+% Impressão das Curvas Cinéticas
+figure (2)
+fig = get(groot,'CurrentFigure');
+set(gca,'FontSize',18); 
+hold on
+fig.Color = [1 1 1];
+grid on
+plot(tempo,X(:,1), tempo,X(:,2),tempo,X(:,3),'LineWidth', 2)
+xlabel ('\bf\tau')
+ylabel('\bfx_1, x_2, x_3')
+legend('Isobuteno','Metanol','MTBE')
+hold off
+%**************************************************************************
+    elseif TipoGraf == 3
+%**************************************************************************
+% Impressão do Perfil de Temperatura
+figure (3)
+fig = get(groot,'CurrentFigure');
+set(gca,'FontSize',18); 
+hold on
+fig.Color = [1 1 1];
+grid on
+plot(tempo,Temp,'LineWidth', 2)
+xlabel ('\bf\tau')
+ylabel('\bfTemperatura (K)')
+hold off
+%**************************************************************************
+    elseif TipoGraf == 4
+%**************************************************************************
+% Impressão do Perfil de Pressão
+figure (4)
+fig = get(groot,'CurrentFigure');
+set(gca,'FontSize',18); 
+hold on
+fig.Color = [1 1 1];
+grid on
+plot(tempo,Pbulk/1000000,'LineWidth',2)
+plot(tempo,Pinterf/1000000,'LineWidth',2)
+xlabel ('\bf\tau')
+ylabel('\bfPressão (MPa)')
+hold off
+%**************************************************************************
+    elseif TipoGraf == 5
+%**************************************************************************
+% Impressão do Diagrama de Fases em 3D
+figure (5)
+fig = get(groot,'CurrentFigure');
+set(gca,'FontSize',18); 
+hold on
+fig.Color = [1 1 1];
+plot3(X(:,1),X(:,2),X(:,3),'k','LineWidth', 2)
+if spt == 2
+    plot3(X(end,1),X(end,2),X(end,3),'o','MarkerSize',6,'MarkerEdgeColor','k','MarkerFaceColor',[0 0 0]); %destacar o ponto final
+end
+grid on
+xlabel('\bfx_1')
+ylabel('\bfx_2')
+zlabel('\bfx_3')
+%
+linexy=([1 0 0; 0 1 0]);
+linexz=([1 0 0; 0 0 1]);
+lineyz=([0 1 0; 0 0 1]);
+plot3(linexy(:,1),linexy(:,2),linexy(:,3),'k');
+plot3(linexz(:,1),linexz(:,2),linexz(:,3),'k');
+plot3(lineyz(:,1),lineyz(:,2),lineyz(:,3),'k');
+%
+axis([0 1 0 1 0 1])
+view(51.5,30)       %regula a posição do gráfico 3D
+%
+if (Da ~= 0)&&(spt == 2)
+% Impressão do Diagrama de Fases em 3D no Equilíbrio
+% Cálculo da curvade de EQ
+if (Da ~= 0)&&(GAS == 1)&&(spt == 2)
+    Xe = CurvaEQ(Pi,A,q,TipoGas,tipo);           % calcula o perfil de EQ
+    plot3(Xe(:,1),Xe(:,2),Xe(:,3),'k:','LineWidth', 1.5)
+end
+end
+%
+if spt == 1
+escPtoFixo = menu('Classificar pontos fixos?','Sim','Não');
+matPtoFixo = [1,2];
+PtoFixo=mattipo(escPtoFixo);
+if PtoFixo == 1
+    %
+    escPI = menu('O ponto fixo inicial se classifica como?','Nó estável','Nó instável','Ponto de Sela','NA');
+    matPI = [1,2,3,4];
+    PI = matPI(escPI);
+    if PI == 1
+        plot3(X(1,1),X(1,2),X(1,3),'o','MarkerSize',6,'MarkerEdgeColor','k','LineWidth', 2,'MarkerFaceColor',[0 0 0]); %destacar o ponto inicial
+    elseif PI ==2
+        plot3(X(1,1),X(1,2),X(1,3),'o','MarkerSize',6,'MarkerEdgeColor','k','LineWidth', 2); %destacar o ponto inicial
+    else
+        plot3(X(1,1),X(1,2),X(1,3),'s','MarkerSize',8,'MarkerEdgeColor','k','LineWidth', 2); %destacar o ponto inicial
+    end
+    %
+    escPF = menu('O ponto fixo final se classifica como?','Nó estável','Nó instável','Ponto de Sela','NA');
+    matPF = [1,2,3,4];
+    PF = matPF(escPF);
+    if PI == 1
+        plot3(X(end,1),X(end,2),X(end,3),'o','MarkerSize',6,'MarkerEdgeColor','k','LineWidth', 2,'MarkerFaceColor',[0 0 0]); %destacar o ponto inicial
+    elseif PF ==2
+        plot3(X(end,1),X(end,2),X(end,3),'o','MarkerSize',6,'MarkerEdgeColor','k','LineWidth', 2); %destacar o ponto inicial
+    else
+        plot3(X(end,1),X(end,2),X(end,3),'s','MarkerSize',8,'MarkerEdgeColor','k','LineWidth', 2); %destacar o ponto inicial
+    end        
+end  
+%
+end
+%
+hold off
+%**************************************************************************
+    elseif TipoGraf == 6
+%**************************************************************************
+% Impressão do Perfil da Taxa de Reação
+figure (6)
+fig = get(groot,'CurrentFigure');
+set(gca,'FontSize',18); 
+hold on
+fig.Color = [1 1 1];
+grid on
+plot(tempo,r,'LineWidth',2)
+xlabel ('\bf\tau')
+ylabel('\bf r(mol/s)')
+hold off
+%**************************************************************************
+    elseif TipoGraf == 7
+%**************************************************************************
+% Impressão do Perfil do Coeficiente de Atividade
+figure (7)
+fig = get(groot,'CurrentFigure');
+set(gca,'FontSize',18); 
+hold on
+fig.Color = [1 1 1];
+grid on
+plot(tempo,CA,'LineWidth',2)
+xlabel ('\bf\tau')
+ylabel('\bf Coeficiente de Atividade')
+legend('Isobuteno','Metanol','MTBE')
+hold off
+%**************************************************************************
+    elseif TipoGraf == 8
+%**************************************************************************
+% Impressão do Perfil do Coeficiente de Transferência de Massa Efetivo
+figure (8)
+fig = get(groot,'CurrentFigure');
+set(gca,'FontSize',18); 
+hold on
+fig.Color = [1 1 1];
+grid on
+plot(tempo,CTMeff,'LineWidth',2)
+xlabel ('\bf\tau')
+ylabel('\bf Coeficiente de Transferência de Massa Efetivo (m/s)')
+legend('Isobuteno','Metanol','MTBE')
+hold off
+%**************************************************************************
+    elseif TipoGraf == 9
+%**************************************************************************
+% Impressão do Perfil do Coeficiente de Irreversibilidade
+figure (9)
+fig = get(groot,'CurrentFigure');
+set(gca,'FontSize',18); 
+hold on
+fig.Color = [1 1 1];
+grid on
+plot(tempo,FIrrev,'LineWidth',2)
+xlabel ('\bf\tau')
+ylabel('\bf Fator de Irreversibilidade')
+legend('Isobuteno','Metanol','MTBE')
+hold off
+%**************************************************************************
+    elseif TipoGraf == 10
+%**************************************************************************
+% Impressão do Perfil da Constante de Equilíbrio de Fases
+figure (10)
+fig = get(groot,'CurrentFigure');
+set(gca,'FontSize',18);
+hold on
+fig.Color = [1 1 1];
+grid on
+plot(tempo,ConstEF,'LineWidth',2)
+xlabel ('\bf\tau')
+ylabel('\bf Constante de Equilíbrio de Fases')
+legend('Isobuteno','Metanol','MTBE')
+hold off
+%**************************************************************************
+    elseif TipoGraf == 11
+%**************************************************************************
+% Imprime Variáveis e Constantes no Equilíbrio
+disp('==========================================================================================================================================================================');
+disp('                                                                         Variáveis e Constantes no Equilíbrio                                                             ');
+disp('==========================================================================================================================================================================');
+disp(' i     t      X1     X2     X3   Gama1  Gama2  Gama3  Phi1   Phi2   Phi3   Alfa1  Alfa2  Alfa3    K1     K2     K3    Pv1(MPa)   Pv2(MPa)   Pv3(MPa)   r(mol/s)     kref  ');
+disp('===  =====  =====  =====  =====  =====  =====  =====  =====  =====  =====  =====  =====  =====  =====  =====  =====  =========  =========  =========  =========  =========');
+format bank
+fprintf('%3d%7.3f%7.3f%7.3f%7.3f%7.3f%7.3f%7.3f%7.3f%7.3f%7.3f%7.3f%7.3f%7.3f%7.3f%7.3f%7.3f%9.3f%11.3f%11.3f%11.3f%11.3f\n',...
+    cont,tf(end),X(end,1),X(end,2),X(end,3),CA(end,1),CA(end,2),CA(end,3),CoefFug(end,1),CoefFug(end,2),...
+    CoefFug(end,3),FIrrev(end,1),FIrrev(end,2),FIrrev(end,3),ConstEF(end,1),ConstEF(end,2),ConstEF(end,3),...
+    PresSat(end,1)/1000000,PresSat(end,2)/1000000,PresSat(end,3)/1000000,r(end,1),kref); 
+disp('==========================================================================================================================================================================');
+disp(' ');
+disp(' ');
+%**************************************************************************
+    elseif TipoGraf == 12
+%**************************************************************************
+% Impressão do Perfil da Constante de Equilíbrio Químico
+figure (11)
+fig = get(groot,'CurrentFigure');
+set(gca,'FontSize',18);
+hold on
+fig.Color = [1 1 1];
+grid on
+plot(tempo,ConstEQ,'LineWidth',2)
+xlabel ('\bf\tau')
+ylabel('\bf Constante de Equilíbrio Químico')
+% legend('Isobuteno','Metanol','MTBE')
+hold off
+%**************************************************************************
+    elseif TipoGraf == 13
+%**************************************************************************
+% Impressão da Cinética na Fase Vapor na Interface
+figure (12)
+fig = get(groot,'CurrentFigure');
+set(gca,'FontSize',18);
+hold on
+fig.Color = [1 1 1];
+grid on
+plot(tempo,Y,'LineWidth',2)
+xlabel ('\bf\tau')
+ylabel('\bfy*')
+legend('Isobuteno','Metanol','MTBE')
+hold off
+%**************************************************************************
+    elseif TipoGraf == 14
+%**************************************************************************
+% Impressão da Cinética na Fase Vapor do Bulk
+figure (13)
+fig = get(groot,'CurrentFigure');
+set(gca,'FontSize',18);
+hold on
+fig.Color = [1 1 1];
+grid on
+plot(tempo,Y.*FIrrev,'LineWidth',2)
+xlabel ('\bf\tau')
+ylabel('\bfy')
+legend('Isobuteno','Metanol','MTBE')
+hold off
+%**************************************************************************
+    end    % fecha o comando if
+%**************************************************************************
+end        % fecha o comando while para o menu de gráficos
+%**************************************************************************
+% Imprime os parâmetros empregados na simulação
+disp(' ');
+disp(' ');
+if tipo ==1
+    disp('===============================================================');
+    disp('           Parâmetros da Simulação e Dados Iniciais            ');
+    disp('===============================================================');
+    disp('    Da         Pi(MPa)        X01          X02          X03    ');
+    disp('===========  ===========  ===========  ===========  ===========');
+    format bank
+    fprintf('%8.3f%12.2f%13.2f%13.2f%13.2f\n',NumDa,PressPi/1000000,x0(1),x0(2),x0(3)); 
+    disp('===============================================================');
+else disp('=========================================================================================');
+disp('Parâmetros da Simulação e Dados Iniciais');
+    disp('=========================================================================================');
+    disp('    Da         Pi(MPa)      q(m3/s)        A(m2)        X01          X02          X03    ');
+    disp('===========  ===========  ===========  ===========  ===========  ===========  ===========');
+    format bank
+    fprintf('%8.3f%12.2f%14.2f%13.2f%13.2f%13.2f%13.2f\n',NumDa,PressPi/1000000,q,A,x0(1),x0(2),x0(3)); 
+    disp('=========================================================================================');
+end
+disp(' ');
+disp(' ');
+disp(' ');
+%**************************************************************************
+% Verificação de cálculo sob novas condições
+escchave = menu('Calcular sob novas condições?','Sim','Não');
+matchave = [1,2];
+chave=matchave(escchave);
+%**************************************************************************
+if Da ~= 0
+    GAS = 2;  % Indica que os cálculos de equilíbrio já foram feitos
+else
+    GAS = 1;  % Indica que os cálculos de equilíbrio ainda não foram feitos
+end
+%
+perg = 1;
+%
+end
+
+Code 2: SistP.m
+% Equação não-linear para o cálculo da pressão no bulk
+function F = SistP(P,A,kVeff,Pi,R,T,q,yi)
+  F = [ 1-(A*kVeff(1)*Pi)/(R*T*q + A*kVeff(1)*P)*yi(1)-(A*kVeff(2)*Pi)/(R*T*q + A*kVeff(2)*P)*yi(2)-(A*kVeff(3)*Pi)/(R*T*q + A*kVeff(3)*P)*yi(3)];
+end
+
+Code 3: SistEADIrrevSep.m
+%**************************************************************************
+% Sistema de equações algébrico-difernciais
+%**************************************************************************
+% dxdt(1) = (x(1)-y(1)) + (Da/kref)* (x(1)-1)*r
+% dxdt(2) = (x(2)-y(2)) + (Da/kref)* (x(2)-1)*r
+% dxdt(3) = (x(3)-y(3)) + (Da/kref)* (x(3)-1)*r
+% y(i) = alfa(i)*K(i)*Pv(i)*x(i)*gama(i)/(Pi*cfug(i))
+% r = k * ((gama(1)*x(1))/(gama(2)*x(2))- (1/Keq)*((gama(3)*x(3))/(gama(2)*x(2))^2))
+function xt = SistEADIrrevSep(t,x,k,P,Pv,kref,Keq,gama,alfa,K,CFUG,Da,Pi)
+% function xt = SistEADIrrev(t,x)
+xt = [((x(1)-1)*k * ((gama(1)*x(1))*(gama(2)*x(2))-(1/Keq)*((gama(3)*x(3)))))
+      ((x(2)-1)*k * ((gama(1)*x(1))*(gama(2)*x(2))-(1/Keq)*((gama(3)*x(3)))))
+       x(1)+x(2)+x(3)-1 ];
+end
+
+
+
+
+Code 4: SistEADIrrevEq.m
+%**************************************************************************
+% Sistema de equações algébrico-difernciais
+%**************************************************************************
+% dxdt(1) = (x(1)-y(1)) + (Da/kref)* (x(1)-1)*r
+% dxdt(2) = (x(2)-y(2)) + (Da/kref)* (x(2)-1)*r
+% dxdt(3) = (x(3)-y(3)) + (Da/kref)* (x(3)-1)*r
+% y(i) = alfa(i)*K(i)*Pv(i)*x(i)*gama(i)/(Pi*cfug(i))
+% r = k * ((gama(1)*x(1))/(gama(2)*x(2))-(1/Keq)*((gama(3)*x(3))/(gama(2)*x(2))^2))
+function xt = SistEADIrrev(t,x,k,P,Pv,kref,Keq,gama,alfa,K,CFUG,Da,Pi)
+xt = [((x(1)-alfa(1)*(Pv(1)*x(1)*gama(1))/(Pi*CFUG(1,1))) + (Da/kref)* (x(1)-1)*k * ((gama(1)*x(1))/(gama(2)*x(2))-(1/Keq)*((gama(3)*x(3))/(gama(2)*x(2))^2)))
+      ((x(2)-alfa(2)*(Pv(2)*x(2)*gama(2))/(Pi*CFUG(1,2))) + (Da/kref)* (x(2)-1)*k * ((gama(1)*x(1))/(gama(2)*x(2))-(1/Keq)*((gama(3)*x(3))/(gama(2)*x(2))^2)))
+       x(1)+x(2)+x(3)-1 ];
+end
+
+Code 5: SistEADIrrev.m
+%**************************************************************************
+% Sistema de equações algébrico-difernciais
+%**************************************************************************
+% dxdt(1) = (x(1)-y(1)) + (Da/kref)* (x(1)-1)*r
+% dxdt(2) = (x(2)-y(2)) + (Da/kref)* (x(2)-1)*r
+% dxdt(3) = (x(3)-y(3)) + (Da/kref)* (x(3)-1)*r
+% y(i) = alfa(i)*K(i)*Pv(i)*x(i)*gama(i)/(Pi*cfug(i))
+% r = k * ((gama(1)*x(1))/(gama(2)*x(2))-(1/Keq)*((gama(3)*x(3))/(gama(2)*x(2))^2))
+function xt = SistEADIrrev(t,x,k,P,Pv,kref,Keq,gama,alfa,K,CFUG,Da,Pi)
+xt = [((x(1)-alfa(1)*(Pv(1)*x(1)*gama(1))/(Pi*CFUG(1,1))) + (Da/kref)* (x(1)-1)*k * ((gama(1)*x(1))/(gama(2)*x(2))-(1/Keq)*((gama(3)*x(3))/(gama(2)*x(2))^2)))
+      ((x(2)-alfa(2)*(Pv(2)*x(2)*gama(2))/(Pi*CFUG(1,2))) + (Da/kref)* (x(2)-1)*k * ((gama(1)*x(1))/(gama(2)*x(2))-(1/Keq)*((gama(3)*x(3))/(gama(2)*x(2))^2)))
+       x(1)+x(2)+x(3)-1 ];
+end
+
+Code 6: reta.m
+function []=reta(A,B,X,tipo,spt)
+a = A(1);
+b = A(2);
+c = B(1);
+d = B(2);
+x1=X(:,1);
+[NP NC]=size(x1);
+x1=linspace(a,c,NP);
+x2=(d-b)/(c-a)*(x1-a)+b;
+size(x1)
+size(x2)
+hold on
+    if tipo == 1      
+        plot(x1,x2,'k','LineWidth', 2.5)
+    else      
+        plot(x1,x2,'k-.','LineWidth', 2.5)
+    end 
+    if spt == 1
+escPtoFixo = menu('Classificar pontos fixos?','Sim','Não');
+matPtoFixo = [1,2];
+PtoFixo=matPtoFixo(escPtoFixo);
+if PtoFixo == 1
+    %
+    escPI = menu('O ponto fixo inicial se classifica como?','Nó estável','Nó instável','Ponto de Sela','NA');
+    matPI = [1,2,3,4];
+    PI = matPI(escPI);
+    if PI == 1
+        plot(x1(1,1),x2(1,1),'o','MarkerSize',6,'MarkerEdgeColor','k','LineWidth', 2,'MarkerFaceColor',[0 0 0]); %destacar o ponto inicial
+    elseif PI == 2
+        plot(x1(1,1),x2(1,1),'o','MarkerSize',6,'MarkerEdgeColor','k','LineWidth', 2); %destacar o ponto inicial
+    elseif PI == 3
+        plot(x1(1,1),x2(1,1),'s','MarkerSize',8,'MarkerEdgeColor','k','LineWidth', 2); %destacar o ponto inicial
+    else
+    end
+    %
+    escPF = menu('O ponto fixo final se classifica como?','Nó estável','Nó instável','Ponto de Sela','NA');
+    matPF = [1,2,3,4];
+    PF = matPF(escPF);
+    if PF == 1
+       plot(X(end,1),X(end,2),'o','MarkerSize',6,'MarkerEdgeColor','k','LineWidth', 2,'MarkerFaceColor',[0 0 0]); %destacar o ponto inicial
+    elseif PF == 2
+        plot(X(end,1),X(end,2),'o','MarkerSize',6,'MarkerEdgeColor','k','LineWidth', 2); %destacar o ponto inicial
+    elseif PF == 3
+        plot(X(end,1),X(end,2),'s','MarkerSize',8,'MarkerEdgeColor','k','LineWidth', 2); %destacar o ponto inicial
+    else
+    end        
+end  
+end
+end
+
+Code 7: Psat.m
+% Função para o cálculo da pressão de saturação dos componentes da mistura
+%empregando a Equação de Antoine
+% t = temperatura da mistura T (K);
+% Pv = pressão de vapor Psat (Pa);
+function Pv = Psat(cPv,t)
+%**************************************************************************
+% Cálculo da pressão de saturação
+for i=1:3
+  Pv(i)=exp(cPv(i,1)+cPv(i,2)/(cPv(i,3)+t));
+end
+%**************************************************************************
+end
+
+Code 8: PressBulk.m
+% Função para o cálculo da pressão no bulk pelo método da Bisseção
+CoefTransfMassEff.m 
+function [P,exitflag] = PressBulk(A,kVeff,Pi,R,T,q,yi,Pchute,fs)
+%**************************************************************************
+% Cálculo da Pressão do bulk na Fase Gasosa pelo Algoritmo de Dekker, que
+% usa uma combinação entre os métodos da bisseção, secante e interpolação
+% quadrática inversa.
+f = @(P) 1-(A*fs(1)*kVeff(1)*Pi)/(R*T*q + A*kVeff(1)*P)*yi(1)-(A*fs(2)*kVeff(2)*Pi)/(R*T*q + A*kVeff(2)*P)*yi(2)-(A*fs(3)*kVeff(3)*Pi)/(R*T*q + A*kVeff(3)*P)*yi(3);
+P0 = Pchute;
+    a = 10; 
+    b = 2*Pi; %pressão do sistema, caso altere precisa trocar aqui
+    eps = 1e-15;  
+          opcoes = optimset('TolX',1e-7);
+      P = fzero(f, [a b], opcoes);
+end
+%**************************************************************************
+
+Code 9: Phi.m
+% Cálculo do coeficiente de fugacidade de mistura de cada componente a
+%partir da equação do virial. Fonte: Smith-Van Ness-Abbott, Seção 12.4,   
+%pág 392.
+function CFUG=Phi(p,t,R,N,y,Pv,Tc,Vc,Zc,w)
+%**************************************************************************
+% TEMPERATURA
+for i=1:N
+    for j=1:N
+            Tcij(i,j)=sqrt(Tc(i)*Tc(j));
+    end
+end
+%**************************************************************************
+% FATOR ACÊNTRICO
+for i=1:N
+    for j=1:N
+        wij(i,j)=(w(i)+w(j))/2;
+    end
+end
+%**************************************************************************
+% FATOR DE COMPRESSIBILIDADE
+for i=1:N
+    for j=1:N
+        Zcij(i,j)=(Zc(i)+Zc(j))/2;
+    end
+end
+%**************************************************************************
+% VOLUME CRÍTICO
+for i=1:N
+    for j=1:N
+        Vcij(i,j)=((Vc(i)^(1/3)+Vc(j)^(1/3))/2)^3;
+    end
+end
+%**************************************************************************
+% PRESSÃO CRÍTICA
+for i=1:N
+    for j=1:N
+        Pcij(i,j)=(Zcij(i,j)*R*Tcij(i,j))/Vcij(i,j);
+    end
+end
+%**************************************************************************
+% COEFICIENTES DE INTERAÇÃO BINÁRIA
+for i=1:N
+    for j=1:N
+       B0=0.083-0.422/((t/Tcij(i,j))^1.6);
+       B1=0.139-0.172/((t/Tcij(i,j))^4.2);
+       Bij(i,j)=(R*Tcij(i,j)/Pcij(i,j))*(B0+wij(i,j)*B1);
+    end
+end
+%**************************************************************************
+% PARÂMETRO DE INTERAÇÃO BINÁRIA d
+for i=1:N
+    for j=1:N
+        if i==j
+            d(i,j)=0;
+        else
+            d(i,j)=2*Bij(i,j)-Bij(i,i)-Bij(j,j);
+        end
+    end
+end
+%**************************************************************************
+% COEFICIENTE DE FUGACIDADE
+s=0;
+for k=1:N
+    for i=1:N
+        for j=1:N
+            s=s+y(i)*y(j)*(2*d(i,k)-d(i,j));
+        end
+    end
+    PHIi(k)=exp((p/(R*t))*(Bij(k,k)+0.5*s));
+end
+%
+for i=1:N
+    PHIisat(i)=exp(Bij(i,i)*Pv(i)/(R*t));
+end
+%
+%Cálculo do volume molar do líquido saturado
+for i=1:N
+    ViL(i) = Vc(i)*Zc(i)^((1-(t/Tc(i)))*0.2857); 
+end
+%
+%cálculo do fator de Poynting, que em pressões baixas e moderadas é 
+%diferente da unidade em somente alguns milésimos, sua omissão introduz um
+%erro desprezível. (Smith-Van Ness-Abbott, seção 12.4, pág. 392).
+for i=1:N   
+    FP(i)=exp(-ViL(i)*(p-Pv(i))/(R*t));
+end
+%
+for i=1:N
+    CFUG(i)=(PHIi(i)/PHIisat(i))*FP(i);
+end
+end
+
+Code10: Irrev.m
+% Função para o cálculo dos parâmetros da transferência de massa
+% t = temperatura da mistura T (K);
+function [alfa,K,P,kVeff,CFUG] = Irrev(N,A,Pi,R,T,q,Pv,gama,L,MM,v,yi,Pchute,TipoGas,Tc,Vc,Zc,w)
+%**************************************************************************
+% Coeficiente de Transferência de Massa Efetivo do Componenete i na Fase Vapor
+kVeff = CoefTransfMassEff(N,T,MM,Pi,v,yi,L);
+%**************************************************************************
+% Cálculo da Pressão do bulk na Fase Gasosa pelo Algoritmo de Dekker, que
+% usa uma combinação entre os métodos da bisseção, secante e interpolação
+% quadrática inversa.
+fs = [1 1 1];
+for i=1:3
+    if yi(i)<=0
+        fs(i)=0;
+    end
+end
+P = PressBulk(A,kVeff,Pi,R,T,q,yi,Pchute,fs);
+%**************************************************************************
+%CÁLCULO DOS COEFICIENTES DE FUGACIDADE
+if TipoGas == 1     %seleção de gás ideal x não-ideal
+    CFUG = ones(1,N);
+else
+    CFUG = Phi(P,T,R,N,yi,Pv,Tc,Vc,Zc,w);
+end
+%**************************************************************************
+% Constante de Equilíbrio de Fases
+for i=1:N
+    K(i)=(Pv(i)*gama(i))/(Pi*CFUG(i));
+end
+%**************************************************************************
+% Fator de Irreversibilidade
+for i=1:N
+    alfa(i)=(A*kVeff(i)*Pi)/(R*T*q+A*kVeff(i)*P);
+end
+%**************************************************************************
+end
+
+Code11: Dados.m
+function [N,cPv,cV,cI,R,L,MM,v,Tc,Pc,Vc,Zc,w] = Dados
+%**************************************************************************
+% Número de Componentes     
+N = 3;
+%**************************************************************************
+% Coeficientes da equação de Antoine para (1)isobuteno,(2)metanol e (3)MTBE
+% Fonte: 1994, Venimadhavan_et_al -- RCM - Table 2
+%            A           B        C
+cPv = [20.64556 -2125.74886 -33.160;
+       23.49989 -3643.31362 -33.434;
+       20.71616 -2571.58460 -48.406];
+%**************************************************************************     
+% Volume molar e parâmetros de interação para o sistema isobuteno/metanol/MTBE      
+cV = [93.33E-6 44.44E-6 118.8E-6];  %m3/mol
+ 
+cI = [   0.0         169.9953      -60.1085;
+         2576.8532     0.0        1483.2478;
+         271.5669   -406.3902        0.0  ]*4.184;    %J/mol (coloquei *4.184 para usar o valor de R em SI)
+%**************************************************************************
+% Constante Universal dos Gases Ideais    
+R = 8.314;  % J/mol*K
+%**************************************************************************
+% L é a espessura do filme
+L = 1E-3; %m
+%**************************************************************************
+% Massas Molares dos Componentes
+% 1 = isobuteno; 2 = metanol; 3 = MTBE;
+MM = [56.106 32.04 88.15]; %Kg/Kmol
+%**************************************************************************
+% Volumes atômicos de difusão usados para estimar as difusividades
+v = [81.84 29.9 111.74];  %Admensional
+%**************************************************************************
+% Propriedades críticas das substâncias puras. 
+% Fonte: Table 2-164 do Perry' Chemical Engineeing Handbook.
+% (1) - isobuteno
+% (2) - metanol
+% (3) - MTBE
+%        (1)        (2)        (3)
+Tc = [  417.9      512.64    497.1 ]; %temperatura crítica dos componentes, K
+Pc = [  3.98E-6   8.14E-6  3.41E-6 ]; %pressão crítica dos componentes, Pa
+Vc = [ 0.238E-3  0.117E-3 0.329E-3 ]; %volume crítico dos componentes, m3/mol
+Zc = [  0.272       0.224    0.272 ]; %fator de compressibilidade dos componentes
+w  = [  0.192       0.566    0.264 ]; %fator acêntrico dos componentes
+%**************************************************************************
+end
+
+Code12: CurvaEQ.m
+% *************************************************************************
+% Mapas de Curvas Residuais para Sistemas Ternários 
+% *************************************************************************
+function Xe = CurvaEQ(Pi,A,q,TipoGas,tipo,x0)
+%**************************************************************************
+% Carregamento das Propriedades Físicas do Sistema
+[N,cPv,cV,cI,R,L,MM,v,Tc,Pc,Vc,Zc,w] = Dados;
+%**************************************************************************
+% Limpeza das variáveis para prevenir erros na simulação 
+clear  X        tempo    Temp    Pbulk   Pinterf  CTMeff  ConstCinet ...
+       ConstEQ  CA      PresSat  FIrrev  ConstEF  Y       r    P;
+%**************************************************************************
+% Seleção Fase Gasosa Ideal x Não-Ideal 
+% TipoGas = 1;
+%**************************************************************************
+% Seleção do Modelo 
+% tipo = 1;
+%**************************************************************************
+% Pressão total na interface 
+PressPi = Pi;
+%**************************************************************************
+% Número de Damkohler 
+Da=300;
+NumDa = Da;
+%**************************************************************************
+% Entrada da composição Inicial do Líquido 
+disp(' ');
+disp(' ');
+%
+xi = x0;                 % Estimativa inicial da integração
+Xe(1,:) = x0;             % Atribui x0 a solução do sitema de EAD em t = 0
+%**************************************************************************
+% Cálculo da Temperatura do Sistema e Composição da Fase Vapor Inicial
+T0 = BolhaT(x0,Pi,R,cPv,cV,cI,N,TipoGas,Pc,Tc,Vc,Zc,w);
+%**************************************************************************
+% Variáveis auxiliares de integração
+cont = 1; % Contador auxiliar 
+tf = 0;             % Tempo inicial para a integração do sistema de EAD
+tempoe(1,1) = tf;    % Tempo inicial para o vetor tempo da solução
+err1 = 10; err2 = 10; err3 = 10; % valores iniciais dos erros
+prec = 1E-10;        % Precisão nas frações molares dos coponentes da fase liquda
+Pchute = Pi;        % Valor inicial para a estimativa da pressão do bulk
+%**************************************************************************
+while ((err1 > prec) || (err2 > prec))
+%**************************************************************************
+% Cálculo da Temperatura do Sistema e Composição da Fase Vapor
+[Te,yi] = BolhaT(xi,Pi,R,cPv,cV,cI,N,TipoGas,Pc,Tc,Vc,Zc,w);
+Temp(cont,1) = Te; % Atribui a temperatura inicial T ao vetor Temp em t = 0
+Y(cont,:)=yi;     % Atribui a composição inicial da fase gasosa yi ao vetor Y em t = 0   
+%**************************************************************************
+% Cálculo do Coeficiente de Atividade
+gamae = CoefAtiv(xi,Te,R,cV,cI,N);
+CA(cont,:) = gamae;
+%**************************************************************************
+% Cálculo da Pressão de Vapor   
+Pve = Psat(cPv,Te);
+PresSat(cont,:) = Pve;
+%**************************************************************************
+% Cálculo dos Parâmetros Cinéticos e de Equilíbrio Químico
+[krefe,ke,Keqe] = CineticaEQ(Te);
+ConstCinet(cont,:) = ke;
+ConstEQ(cont,:) = Keqe;
+%**************************************************************************
+% Cálculo do Fator de Irreversibilidade, Constante de Equilíbrio de Fases e
+% Pressão no bulk da Fase Gasosa
+if tipo == 1
+    alfae = [1 1 1];
+    FIrrev(cont,:) = alfae;
+    Ke = [1 1 1];
+    ConstEF(cont,:) = Ke;
+    Pbulk(cont,1) = Pi;
+    Pinterf(cont,1) = Pi;
+    CFUG = ones(1,N); 
+    CoefFug(cont,:) = CFUG;
+else
+    [alfae,Ke,P,kVeff,CFUG] = Irrev(N,A,Pi,R,Te,q,Pve,gamae,L,MM,v,yi,Pchute,TipoGas,Tc,Vc,Zc,w);
+    CTMeff(cont,:) = kVeff;
+    Pbulk(cont,1) = P;
+    Pinterf(cont,1) = Pi;
+    FIrrev(cont,:) = alfae;
+    ConstEF(cont,:) = Ke;
+    CoefFug(cont,:) = CFUG;
+end
+    Pchute = Pbulk(cont,1); % Valor inicial para a estimativa da pressão do bulk
+%**************************************************************************
+%Cálculo da Taxa de Reação
+r(cont,1) = ke * ((gamae(1)*xi(1))/(gamae(2)*xi(2))-(1/Keqe)*((gamae(3)*xi(3))/(gamae(2)*xi(2))^2));
+%**************************************************************************
+% Intervalo de Integração do Sistema de EADs
+t0  = 0.0;         % Tempo inicial de integração
+dtf = 0.001;      % Incremento de tempo de integração
+tf  = tf + dtf;    % Tempo final de integração
+tspan = [t0 tf];   % Intervalo de tempo de integração
+%**************************************************************************
+% Solução do Sistema de EADs
+M = [1 0 0; 0 1 0; 0 0 0];
+options = odeset('Mass',M,'RelTol',1e-10,'AbsTol',[1e-10 1e-10 1e-10]);
+[t,x] = ode15s(@SistEADIrrev,tspan,xi,options,ke,Pbulk,Pve,krefe,Keqe,gamae,alfae,Ke,CFUG,Da,Pi);
+%**************************************************************************
+% Atribui solução do sistema de EAD ao vetor xi
+xi = x(end,:); % recebe a última linha da matriz de solução do sistema de EAD
+%**************************************************************************
+% Associa a solução do sistema de EAD aos vetores finais de solução e evita 
+%que em caso de pressões negativas seja associada uma solução ao vetor X, o
+%que permite a exclusão da linha com a pressão negativa
+if Pbulk(cont,1) > 0     
+    Xe(cont+1,:) = xi;
+    tempoe(cont+1,1) = tf;
+end
+%**************************************************************************
+% Para o loop caso encontre um valor negativo de composição de cada um dos 
+%componentes ou pressão no bulk
+if Pbulk(cont,1) < 0
+    break;
+elseif xi(1)<0
+    break;
+elseif xi(2)<0
+    break;
+elseif xi(3)<0
+    break;
+end
+%**************************************************************************
+% Cálculo dos erros entre passos das soluções da composição da fase líquida
+%obtida pela solução do sistema de EAD 
+err1 = abs(Xe(cont+1,1)-Xe(cont,1));  % Diferença em X1 entre os passos
+err2 = abs(Xe(cont+1,2)-Xe(cont,2));  % Diferença em X2 entre os passos
+err3 = abs(Xe(cont+1,3)-Xe(cont,3));  % Diferença em X3 entre os passos
+cont = cont+1;                        % Incremento no contador auxiliar
+%**************************************************************************
+end
+%**************************************************************************
+% Exclui última linha com valor negativo de composição ou pressão, caso
+% ocorra ou completa as propriedades 
+if (Xe(end,1)<0)||(Xe(end,2)<0)||(Xe(end,3)<0)
+    tempoe(end,:)=[];
+    Xe(end,:)=[];
+elseif (Pbulk(end,1)<0)||(isnan(Pbulk(end,1)))
+    tempoe(end,:)=[];
+    Xe(end,:)=[];
+    Pbulk(end,:)=[]; 
+    Pinterf(end,:)=[];
+    Temp(end,:)=[];
+    CA(end,:)=[];
+    PresSat(end,:)=[];
+    ConstCinet(end,:)=[];
+    ConstEQ(end,:)=[];
+    CTMeff(end,:)=[];
+    FIrrev(end,:)=[];
+    ConstEF(end,:)=[];
+else
+    % Cálculo da Temperatura do Sistema e Composição da Fase Vapor Final
+    [Te,yi] = BolhaT(xi,Pi,R,cPv,cV,cI,N,TipoGas,Pc,Tc,Vc,Zc,w);
+    Temp(cont,1) = Te; % Atribui a temperatura inicial T ao vetor Temp em t = 0
+    Y(cont,:) = yi;     % Atribui a composição inicial da fase gasosa yi ao vetor Y em t = 0   
+    %
+    % Cálculo do Coeficiente de Atividade Final
+    gamae = CoefAtiv(xi,Te,R,cV,cI,N);
+    CA(cont,:) = gamae;
+    %
+    % Cálculo da Pressão de Vapor Final   
+    Pve = Psat(cPv,Te);
+    PresSat(cont,:) = Pve;
+    %
+    % Cálculo dos Parâmetros Cinéticos e de Equilíbrio Químico Finais
+    [krefe,ke,Keqe] = CineticaEQ(Te);
+    ConstCinet(cont,:) = ke;
+    ConstEQ(cont,:) = Keqe;
+    %
+    % Cálculo do Fator de Irreversibilidade, Constante de Equilíbrio de Fases e
+    % Pressão no bulk da Fase Gasosa Finais
+if tipo == 1
+    alfae = [1 1 1];
+    Ke = [1 1 1];
+    ConstEF(cont,:) = Ke;
+    Pbulk(cont,1) = Pi;
+    Pinterf(cont,1) = Pi;
+else
+    [alfae,Ke,P,kVeff,CFUG] = Irrev(N,A,Pi,R,Te,q,Pve,gamae,L,MM,v,yi,Pchute,TipoGas,Tc,Vc,Zc,w);
+    FIrrev(cont,:) = alfae;
+    ConstEF(cont,:) = Ke;
+    Pbulk(cont,1) = P;
+    Pinterf(cont,1) = Pi;
+end       
+end
+
+Code13: CoefTransfMassEff.m
+% Função para o cálculo dos parâmetros da transferência de massa
+% t = temperatura da mistura T (K);
+function kVeff = CoefTransfMassEff(N,T,MM,Pi,v,yi,L)
+warning off
+%**************************************************************************
+% Cálculo dos Coeficientes Binários de Difusão (Correlação de Fuller, 1966)
+for i=1:N
+    for j=1:N
+        DV(i,j)=0.01013*(T^1.75)*(sqrt((MM(i)+MM(j))/(MM(i)*MM(j)))/(Pi*(v(i)^(1/3)+v(j)^(1/3))^2));       
+    end
+end
+%**************************************************************************
+% Coeficiente de Difusão Efetivo do Componenete i na Fase Vapor (Fórmula de Wilke)
+for i=1:N
+    den=0;
+    for j=1:N
+        if i==j
+            c=0;
+        else
+            c=1;
+        end
+        den=den+c*yi(j)/DV(i,j);
+    end
+    DVeff(i)=(1-yi(i))/den;
+end
+%**************************************************************************
+% Coeficiente de Transferência de Massa Efetivo do Componenete i na Fase Vapor
+kVeff = DVeff / L;
+end
+%**************************************************************************
+
+Code14: CoefAtiv.m
+% Função para o cálculo dos coeficientes de atividade dos componentes 
+%da mistura empregando o Modelo de Wilson
+ 
+function gama = CoefAtiv(x,T,R,cV,cI,N)
+ 
+for i=1:N
+    for j=1:N
+        A(i,j) = cV(j)/cV(i)*exp(-cI(i,j)/(R*T));
+    end
+end
+ 
+for i=1:N
+    S1 = 0; S2 = 0; S3 =  0;
+    for j=1:N
+        S1 = S1 + x(j)*A(i,j);
+    end
+    
+    for k =1:N
+        S3 =  0;
+        for j =1:N
+           S3 = S3 + (x(j)*A(k,j));
+        end        
+        S2 = S2 + (x(k)*A(k,i))/S3;
+    end  
+    
+    gama(i) = exp(1-log(S1)-S2);  
+end
+end
+
+Code15: CineticaEQ.m
+% Função para o cálculo dos parâmetros cinéticos da reação química
+% t = temperatura da mistura T (K);
+function [kref,k,Keq] = CineticaEQ(T)
+%**************************************************************************
+% Constante Cinética de Referência da Reação Química a temperatura de
+% 333.15 K (tempertatura tipicamente usada na síntese do MTBE)
+kref = 243.8E-3*exp(-11.113E3*(1/333.15-1/363.15)); %mol/(eq.s)
+%**************************************************************************
+% Constante Cinética da Reação Química
+k = 243.8E-3*exp(-11.113E3*(1/T-1/363.15)); %mol/(eq.s)   Rehfinhger (het)
+% k = 74.40/60*exp(-3187.0/T);              %mol/min      Venimadhavan (hom)       
+%**************************************************************************
+% Constante de Equilíbrio da Reação Química
+Keq = exp(log(284)-1.49277E3*(1/T-1/298.15)-7.74002E1*log(T/298.15)+...
+    5.07563E-1*(T-298.15)-9.12739E-4*(T^2-298.15^2)+1.10649E-6*(T^3-298.15^3)...
+    -6.27996E-10*(T^4-298.15^4));
+% Keq = exp((6820.00/T)-16.33);                    %Venimadhavan   
+%**************************************************************************
+end
+
+Code16: CalcSep.m
+%**************************************************************************
+% Função para cálculo da separatriz
+%**************************************************************************
+function X = CalcSep(xi,Pi,TipoGas,tf,prec,err1,err2,cont,tipo,A,q,Da,spt,Pchute,x0)
+%**************************************************************************
+% Atribui x0 a solução do sitema de EAD em t = 0
+X(1,:) = x0;             
+tempo(1,1) = tf;
+%**************************************************************************
+% Carregamento das Propriedades Físicas do Sistema
+[N,cPv,cV,cI,R,L,MM,v,Tc,Pc,Vc,Zc,w] = Dados;
+%**************************************************************************
+while ((err1 > prec) || (err2 > prec))
+%**************************************************************************
+% Cálculo da Temperatura do Sistema e Composição da Fase Vapor
+[T,yi] = BolhaT(xi,Pi,R,cPv,cV,cI,N,TipoGas,Pc,Tc,Vc,Zc,w);
+Temp(cont,1) = T; % Atribui a temperatura inicial T ao vetor Temp em t = 0
+Y(cont,:) = yi;    % Atribui a composição inicial da fase gasosa yi ao vetor Y em t = 0   
+%**************************************************************************
+% Cálculo do Coeficiente de Atividade
+gama = CoefAtiv(xi,T,R,cV,cI,N);
+CA(cont,:) = gama;
+%**************************************************************************
+% Cálculo da Pressão de Vapor   
+Pv = Psat(cPv,T);
+PresSat(cont,:) = Pv;
+%**************************************************************************
+% Cálculo dos Parâmetros Cinéticos e de Equilíbrio Químico
+[kref,k,Keq] = CineticaEQ(T);
+ConstCinet(cont,:) = k;
+ConstEQ(cont,:) = Keq;
+%**************************************************************************
+% Cálculo do Fator de Irreversibilidade, Constante de Equilíbrio de Fases e
+% Pressão no bulk da Fase Gasosa
+if tipo == 1
+    alfa = [1 1 1];
+    FIrrev(cont,:) = alfa;
+    K = [1 1 1];
+    ConstEF(cont,:) = K;
+    Pbulk(cont,1) = Pi;
+    Pinterf(cont,1) = Pi;
+    CFUG = ones(1,N); 
+    CoefFug(cont,:) = CFUG;
+else
+    [alfa,K,P,kVeff,CFUG,exitflag] = Irrev(N,A,Pi,R,T,q,Pv,gama,L,MM,v,yi,Pchute,TipoGas,Tc,Vc,Zc,w);
+    CTMeff(cont,:) = kVeff;
+    Pbulk(cont,1) = P;
+    Pinterf(cont,1) = Pi;
+    FIrrev(cont,:) = alfa;
+    ConstEF(cont,:) = K;
+    CoefFug(cont,:) = CFUG;
+    if exitflag ~= 1
+        break
+    end
+end
+    Pchute = Pbulk(cont,1);   % Valor inicial para a estimativa da pressão do bulk
+%**************************************************************************
+%Cálculo da Taxa de Reação
+r(cont,1) = k * ((gama(1)*xi(1))/(gama(2)*xi(2))-(1/Keq)*((gama(3)*xi(3))/(gama(2)*xi(2))^2));
+%**************************************************************************
+% Solução do Sistema de EADs
+if spt ==1  % seleciona se o cálculo será feito para uma separatriz
+    % Intervalo de Integração do Sistema de EADs
+    t0  = 0.0;         % Tempo inicial de integração
+    dtf = 0.0001;      % Incremento de tempo de integração
+    tf  = tf + dtf;    % Tempo final de integração
+    tspan = [t0 tf];   % Intervalo de tempo de integração
+    M = [1 0 0; 0 1 0; 0 0 0];
+    options = odeset('Mass',M,'RelTol',1e-6,'AbsTol',[1e-5 1e-5 1e-5]);
+    [t,x] = ode15s(@SistEADIrrevSep,tspan,xi,options,k,Pbulk,Pv,kref,Keq,gama,alfa,K,CFUG,Da,Pi);
+else
+    % Intervalo de Integração do Sistema de EADs
+    t0  = 0.0;         % Tempo inicial de integração
+    dtf = 0.0001;      % Incremento de tempo de integração
+    tf  = tf + dtf;    % Tempo final de integração
+    tspan = [t0 tf];   % Intervalo de tempo de integração
+    M = [1 0 0; 0 1 0; 0 0 0];
+    options = odeset('Mass',M,'RelTol',1e-6,'AbsTol',[1e-5 1e-5 1e-5]);
+    [t,x] = ode15s(@SistEADIrrev,tspan,xi,options,k,Pbulk,Pv,kref,Keq,gama,alfa,K,CFUG,Da,Pi);
+end   
+%**************************************************************************
+% Atribui solução do sistema de EAD ao vetor xi
+xi = x(end,:); % recebe a última linha da matriz de solução do sistema de EAD
+%**************************************************************************
+% Associa a solução do sistema de EAD aos vetores finais de solução e evita 
+%que em caso de pressões negativas seja associada uma solução ao vetor X, o
+%que permite a exclusão da linha com a pressão negativa
+if Pbulk(cont,1) > 0     
+    X(cont+1,:) = xi;
+    tempo(cont+1,1) = tf;
+end
+%**************************************************************************
+% Para o loop caso encontre um valor negativo de composição de cada um dos 
+%componentes ou pressão no bulk
+if Pbulk(cont,1) < 0
+    break;
+elseif xi(1)<0
+    break;
+elseif xi(2)<0
+    break;
+elseif xi(3)<0
+    break;
+end
+%**************************************************************************
+%**************************************************************************
+% Cálculo dos erros entre passos das soluções da composição da fase líquida
+%obtida pela solução do sistema de EAD 
+err1 = abs(X(cont+1,1)-X(cont,1));  % Diferença em X1 entre os passos
+err2 = abs(X(cont+1,2)-X(cont,2));  % Diferença em X2 entre os passos
+err3 = abs(X(cont+1,3)-X(cont,3));  % Diferença em X3 entre os passos
+cont = cont+1;                      % Incremento no contador auxiliar
+%**************************************************************************
+end
+%**************************************************************************
+% Exclui última linha com valor negativo de composição ou pressão, caso
+% ocorra ou completa as propriedades 
+if (X(end,1)<0)||(X(end,2)<0)||(X(end,3)<0)
+    tempo(end,:)=[];
+    X(end,:)=[];
+elseif (Pbulk(end,1)<0)||(isnan(Pbulk(end,1)))
+    tempo(end,:)=[];
+    X(end,:)=[];
+    Pbulk(end,:)=[]; 
+    Pinterf(end,:)=[];
+    Temp(end,:)=[];
+    CA(end,:)=[];
+    PresSat(end,:)=[];
+    ConstCinet(end,:)=[];
+    ConstEQ(end,:)=[];
+    CTMeff(end,:)=[];
+    FIrrev(end,:)=[];
+    ConstEF(end,:)=[];
+else
+    % Cálculo da Temperatura do Sistema e Composição da Fase Vapor Final
+    [T,yi] = BolhaT(xi,Pi,R,cPv,cV,cI,N,TipoGas,Pc,Tc,Vc,Zc,w);
+    Temp(cont,1) = T; % Atribui a temperatura inicial T ao vetor Temp em t = 0
+    Y(cont,:) = yi;     % Atribui a composição inicial da fase gasosa yi ao vetor Y em t = 0   
+    %
+    % Cálculo do Coeficiente de Atividade Final
+    gama = CoefAtiv(xi,T,R,cV,cI,N);
+    CA(cont,:) = gama;
+    %
+    % Cálculo da Pressão de Vapor Final   
+    Pv = Psat(cPv,T);
+    PresSat(cont,:) = Pv;
+    %
+    % Cálculo dos Parâmetros Cinéticos e de Equilíbrio Químico Finais
+    [kref,k,Keq] = CineticaEQ(T);
+    ConstCinet(cont,:) = k;
+    ConstEQ(cont,:) = Keq;
+    %
+    % Cálculo do Fator de Irreversibilidade, Constante de Equilíbrio de Fases e
+    % Pressão no bulk da Fase Gasosa Finais
+    if tipo == 1
+        alfa = [1 1 1];
+        K = [1 1 1];
+        ConstEF(cont,:) = K;
+        Pbulk(cont,1) = Pi;
+        Pinterf(cont,1) = Pi;
+    else
+        [alfa,K,P,kVeff,CFUG] = Irrev(N,A,Pi,R,T,q,Pv,gama,L,MM,v,yi,Pchute,TipoGas,Tc,Vc,Zc,w);
+        CTMeff(cont,:) = kVeff;
+        Pbulk(cont,1) = P;
+        Pinterf(cont,1) = Pi;
+        FIrrev(cont,:) = alfa;
+        ConstEF(cont,:) = K;
+    end
+    %
+end
+% disp('========================================================================');
+% disp(' ');
+% disp(' ');
+%**************************************************************************
+end
+
+Code17: BolhaT.m
+% Cálculo da temperatura de ebulição e da composição da fase gasosa pelo
+% algoritmo BOL T. Fonte (Livro: Smith-Van Ness-Abbott, pág. 399)
+function [t,yi] = BolhaT(x,p,R,cPv,cV,cI,N,TipoGas,Pc,Tc,Vc,Zc,w)
+%**************************************************************************
+%Coeficientes da Equação de Antoine
+A=cPv(:,1);
+B=cPv(:,2);
+C=cPv(:,3);
+%**************************************************************************
+%Coeficiente de Fugacidade
+CFUG = ones(1,N);
+%**************************************************************************
+%CÁLCULO DAS TEMPERATURAS DE SATURAÇÃO
+for i=1:N
+    Tsat(i) = cPv(i,2)/(log(p)- cPv(i,1)) - cPv(i,3);
+end
+%**************************************************************************
+%CÁLCULO DA TEMPERATURA
+t = 0;
+for i=1:N
+    t = t + x(i)*Tsat(i);
+end
+%**************************************************************************
+%CÁLCULO DA PRESSÃO DE SATURAÇÃO
+Pv = Psat(cPv,t);
+%**************************************************************************
+%CÁLCULO DOS COEFICIENTES DE ATIVIDADE
+gama = CoefAtiv(x,t,R,cV,cI,N);
+%**************************************************************************
+%A ESPÉCIE J SERÁ A ESPÉCIE 1
+% J = 1
+%**************************************************************************
+%CÁLCULO DA PRESSÃO DE SATURAÇÃO DA ESPÉCIE J
+den = 0;
+for i=1:N
+    den=den+(x(i)*gama(i)/CFUG(i))*(Pv(i)/Pv(1));
+end
+Pjsat = p/den;
+%**************************************************************************
+%CÁLCULO DA TEMPERATUA DA MISTURA
+t = cPv(1,2)/(log(p)- cPv(1,1)) - cPv(1,3);
+%**************************************************************************
+%**************************************************************************
+%LOOP
+s=10;     %valor apenas para passar pelo critério de parada
+while abs(s-1)>1E-4
+%**************************************************************************
+%CÁLCULO DA PRESSÃO DE SATURAÇÃO
+Pv = Psat(cPv,t);
+%**************************************************************************
+%CÁLCULO DA COMPOSIÇÃO DA FASE VAPOR
+for i=1:N
+    yi(i)=x(i)*gama(i)*Pv(i)/(CFUG(i)*p);
+end
+s=0;
+for i=1:N
+    s=s+yi(i);
+end
+%**************************************************************************
+%CÁLCULO DOS COEFICIENTES DE FUGACIDADE CONFORME FASE GASOSA IDEAL OU
+%NÃO-IDEAL
+if TipoGas == 1 %seleção de gás ideal x não-ideal
+    CFUG = ones(1,N);
+else
+    CFUG = Phi(p,t,R,N,yi,Pv,Tc,Vc,Zc,w);
+end
+%**************************************************************************
+%CÁLCULO DOS COEFICIENTES DE ATIVIDADE
+gama = CoefAtiv(x,t,R,cV,cI,N);
+%**************************************************************************
+%CÁLCULO DA PRESSÃO DE SATURAÇÃO DA ESPÉCIE J
+den = 0;
+for i=1:N
+    den=den+(x(i)*gama(i)/CFUG(i))*(Pv(i)/Pv(1));
+end
+Pjsat = p/den;
+%**************************************************************************
+%CÁLCULO DA TEMPERATUA DA MISTURA
+t = cPv(1,2)/(log(Pjsat)- cPv(1,1)) - cPv(1,3);
+%**************************************************************************
+%**************************************************************************
+end
+end
+
+Code18: BifReactDist.m
+function out = BifReactDist
+out{1} = @init;
+out{2} = @fun_eval;
+out{3} = [];
+out{4} = [];
+out{5} = [];
+out{6} = [];
+out{7} = [];
+out{8} = [];
+out{9} = [];
+% -------------------------------------------------------------------------
+function dydt = fun_eval(t,kmrgd,par_Da,par_q,par_A)
+%**************************************************************************
+% Parâmetros de definição
+tipo    = 2;    % Seleciona o tipo de sistema: (1)reversível ou (2) irreversível
+TipoGas = 2;    % Seleciona o tipo de modelo de gás: (1) ideal ou (2) não-ideal
+%**************************************************************************
+% Carga da composição do sistema
+X1 = kmrgd(1)/(kmrgd(1)+kmrgd(2)+kmrgd(3))
+X2 = kmrgd(2)/(kmrgd(1)+kmrgd(2)+kmrgd(3))
+X3 = kmrgd(3)/(kmrgd(1)+kmrgd(2)+kmrgd(3))
+xi=[X1,X2,X3];
+Pi = 800000;    % Pressão na Interface, Pa
+Pchute = Pi;    % Valor inicial para a estimativa da pressão do bulk
+%**************************************************************************
+% Carregar dados
+%**************************************************************************
+% Número de Componentes     
+N = 3;
+%**************************************************************************
+% Coeficientes da equação de Antoine para (1)isobuteno, (2)metanol e (3)MTBE      
+%            A           B        C
+cPv = [20.64556 -2125.74886 -33.160;
+       23.49989 -3643.31362 -33.434;
+       20.71616 -2571.58460 -48.406];
+%**************************************************************************     
+% Volume molar e parâmetros de interação para o sistema isobuteno/metanol/MTBE      
+cV = [93.33E-6 44.44E-6 118.8E-6];  %m3/mol
+ 
+cI = [   0.0         169.9953      -60.1085;
+         2576.8532     0.0        1483.2478;
+         271.5669   -406.3902        0.0  ]*4.184;    %J/mol (coloquei *4.184 para usar o valor de R em SI)
+%**************************************************************************
+% Constante Universal dos Gases Ideais    
+R = 8.314;  % J/mol*K
+%**************************************************************************
+% L é a espessura do filme
+L = 1E-3; %m
+%**************************************************************************
+% Massas Molares dos Componentes
+% 1 = isobuteno; 2 = metanol; 3 = MTBE;
+MM = [56.106 32.04 88.15]; %Kg/Kmol
+%**************************************************************************
+% Volumes atômicos de difusão usados para estimar as difusividades
+v = [81.84 29.9 111.74];
+%**************************************************************************
+% Propriedades críticas das substâncias puras. 
+% Fonte: Table 2-164 do Perry' Chemical Engineeing Handbook.
+% (1) - isobuteno
+% (2) - metanol
+% (3) - MTBE
+%        (1)        (2)        (3)
+Tc = [  417.9      512.64    497.1 ]; %temperatura crítica dos componentes, K
+Pc = [  3.98E-6   8.14E-6  3.41E-6 ]; %pressão crítica dos componentes, Pa
+Vc = [ 0.238E-3  0.117E-3 0.329E-3 ]; %volume crítico dos componentes, m3/mol
+Zc = [  0.272       0.224    0.272 ]; %fator de compressibilidade dos componentes
+w  = [  0.192       0.566    0.264 ]; %fator acêntrico dos componentes
+%**************************************************************************
+% Cálculo dos coeficientes do sistema de equação algébrico diferenciais
+%**************************************************************************
+% Cálculo da Temperatura do Sistema e Composição da Fase Vapor
+[T,yi] = BolhaT(xi,Pi,R,cPv,cV,cI,N,TipoGas,Pc,Tc,Vc,Zc,w);
+%**************************************************************************
+% Cálculo do Coeficiente de Atividade
+gama = CoefAtiv(xi,T,R,cV,cI,N);
+%**************************************************************************
+% Cálculo da Pressão de Vapor   
+Pv = Psat(cPv,T);
+%**************************************************************************
+% Cálculo dos Parâmetros Cinéticos e de Equilíbrio Químico
+[kref,k,Keq] = CineticaEQ(T);
+RR=(k/kref)*((gama(1)*X1)/(gama(2)*X2)-(1/Keq)*((gama(3)*X3)/(gama(2)*X2)^2));
+%**************************************************************************
+% Cálculo do Fator de Irreversibilidade, Constante de Equilíbrio de Fases e
+% Pressão no bulk da Fase Gasosa
+if tipo == 1
+    alfa = [1 1 1];
+    K = [1 1 1];
+    CFUG = ones(1,N);
+    P = Pi;
+else
+    [alfa,K,P,kVeff,CFUG] = Irrev(N,par_A,Pi,R,T,par_q,Pv,gama,L,MM,v,yi,Pchute,TipoGas,Tc,Vc,Zc,w);
+end
+% Constantes de equilíbrio de fases
+K1=K(1);
+K2=K(2);
+K3=K(3);
+% Fatores de irreversibilidade
+ALFA1=alfa(1);
+ALFA2=alfa(2);
+ALFA3=alfa(3);
+%**************************************************************************
+%Sistema de equações
+dydt=[(1-K1*ALFA1+par_Da*RR)*kmrgd(1)-par_Da*RR;
+(1-K2*ALFA2+par_Da*RR)*kmrgd(2)-par_Da*RR;
+(1-K3*ALFA3+par_Da*RR)*kmrgd(3)-par_Da*RR;];
+%**************************************************************************
+% -------------------------------------------------------------------------
+function [tspan,y0,options] = init
+handles = feval(BifReactDist);
+y0=[0,0,0];
+options = odeset('Jacobian',[],'JacobianP',[],'Hessians',[],'HessiansP',[]);
+tspan = [0 10];
+% -------------------------------------------------------------------------
+function jac = jacobian(t,kmrgd,par_Da,par_q,par_A)
+% -------------------------------------------------------------------------
+function jacp = jacobianp(t,kmrgd,par_Da,par_q,par_A)
+% -------------------------------------------------------------------------
+function hess = hessians(t,kmrgd,par_Da,par_q,par_A)
+% -------------------------------------------------------------------------
+function hessp = hessiansp(t,kmrgd,par_Da,par_q,par_A)
+%--------------------------------------------------------------------------
+function tens3  = der3(t,kmrgd,par_Da,par_q,par_A)
+%--------------------------------------------------------------------------
+function tens4  = der4(t,kmrgd,par_Da,par_q,par_A)
+%--------------------------------------------------------------------------
+function tens5  = der5(t,kmrgd,par_Da,par_q,par_A)
